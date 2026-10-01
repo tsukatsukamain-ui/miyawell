@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIYAWELL 管理画面</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Old+Mincho:wght@500;600;700&family=Zen+Kaku+Gothic+New:wght@400;500;600;700&display=swap">
+<style>
+  :root{
+    --stone-warm:#E2DBC9;
+    --paper:#F5F2E9;
+    --ink:#2B2A22;
+    --ink-soft:#5A5748;
+    --moss:#4C6B4E;
+    --moss-deep:#334A35;
+    --amber:#B8863C;
+    --line:rgba(43,42,34,0.14);
+    --card:#FFFFFF;
+    --danger:#B5453A;
+    --shadow:0 1px 2px rgba(43,42,34,0.06), 0 8px 24px rgba(43,42,34,0.06);
+  }
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --stone-warm:#282C22; --paper:#1C1F19; --ink:#EDE9DC; --ink-soft:#B7B1A0;
+      --moss:#8FB08F; --moss-deep:#6E9270; --amber:#D9A85C;
+      --line:rgba(237,233,220,0.14); --card:#262A21;
+      --shadow:0 1px 2px rgba(0,0,0,0.3), 0 8px 24px rgba(0,0,0,0.3);
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:"Zen Kaku Gothic New","Noto Sans JP",sans-serif;padding-inline:20px;}
+  h1,h2,.brand{font-family:"Zen Old Mincho","Noto Serif JP",serif;text-wrap:balance;}
+  .wrap{max-width:860px;margin-inline:auto;}
+  nav{display:flex;align-items:center;justify-content:space-between;padding-block:22px;flex-wrap:wrap;gap:12px;}
+  .brand{font-size:20px;font-weight:600;letter-spacing:0.08em;}
+  .brand a{color:var(--ink-soft);font-size:12px;font-family:"Zen Kaku Gothic New",sans-serif;text-decoration:none;margin-left:14px;}
+  #auth-area{display:flex;align-items:center;gap:12px;}
+  .user-name{font-size:13px;color:var(--ink-soft);}
+  h1{font-size:26px;font-weight:600;margin:0 0 6px;}
+  .sub{font-size:13.5px;color:var(--ink-soft);margin:0 0 28px;}
+  .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 18px;border-radius:8px;font-size:13.5px;font-weight:600;text-decoration:none;cursor:pointer;border:1px solid transparent;font-family:"Zen Kaku Gothic New",sans-serif;}
+  .btn-sm{padding:7px 14px;font-size:12.5px;}
+  .btn-primary{background:var(--moss);color:var(--paper);}
+  .btn-primary:hover{background:var(--moss-deep);}
+  .btn-ghost{background:transparent;border-color:var(--line);color:var(--ink);}
+  .btn-ghost:hover{border-color:var(--moss);color:var(--moss);}
+  .btn-danger{background:transparent;border-color:var(--danger);color:var(--danger);}
+  .btn-danger:hover{background:var(--danger);color:#fff;}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:22px;box-shadow:var(--shadow);margin-bottom:24px;}
+  .card h2{font-size:16px;margin:0 0 16px;font-weight:600;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
+  @media (max-width:640px){.form-grid{grid-template-columns:1fr;}}
+  .field{display:flex;flex-direction:column;gap:5px;}
+  .field.full{grid-column:1 / -1;}
+  label{font-size:12px;color:var(--ink-soft);}
+  input,textarea,select{font-family:inherit;font-size:14px;padding:9px 11px;border:1px solid var(--line);border-radius:7px;background:var(--paper);color:var(--ink);}
+  textarea{resize:vertical;min-height:60px;}
+  .form-actions{margin-top:16px;display:flex;gap:10px;}
+  .event-item{border-bottom:1px solid var(--line);padding-block:16px;}
+  .event-item:last-child{border-bottom:none;}
+  .event-item-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;}
+  .event-item-title{font-size:15px;font-weight:600;}
+  .event-item-meta{font-size:12px;color:var(--ink-soft);margin-top:3px;line-height:1.7;}
+  .event-item-actions{display:flex;gap:8px;flex-shrink:0;}
+  .msg{font-size:13px;margin-top:10px;}
+  .msg.error{color:var(--danger);}
+  .msg.ok{color:var(--moss-deep);}
+  .locked{padding-block:60px;text-align:center;color:var(--ink-soft);font-size:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav>
+    <div class="brand">MIYAWELL <a href="index.html">サイトに戻る</a></div>
+    <div id="auth-area"></div>
+  </nav>
+
+  <div id="app">
+    <p class="locked">確認中...</p>
+  </div>
+
+  <footer style="padding-block:32px 48px;border-top:1px solid var(--line);font-size:11.5px;color:var(--ink-soft);margin-top:20px;">MIYAWELL 管理画面</footer>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

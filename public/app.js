@@ -10,6 +10,8 @@ const sb = createClient(
 
 const stripe = Stripe(window.MIYAWELL_CONFIG.STRIPE_PUBLISHABLE_KEY);
 
+const ADMIN_EMAIL = "tsukatsukamain@gmail.com";
+
 let currentUser = null;
 
 // ---------- 認証まわり ----------
@@ -32,8 +34,12 @@ function renderAuthState() {
 
   if (currentUser) {
     const name = currentUser.user_metadata?.full_name || currentUser.email;
+    const adminLink = currentUser.email === ADMIN_EMAIL
+      ? `<a href="admin.html" class="btn btn-ghost">管理画面</a>`
+      : "";
     authArea.innerHTML = `
       <span class="user-name">${escapeHtml(name)}</span>
+      ${adminLink}
       <button id="logout-btn" class="btn btn-ghost">ログアウト</button>
     `;
     document.getElementById("logout-btn").addEventListener("click", async () => {
