@@ -77,9 +77,8 @@ async function loadEvents() {
   if (currentUser) {
     const { data } = await sb
       .from("registrations")
-      .select("event_id, payment_status, status")
-      .eq("user_id", currentUser.id)
-      .eq("status", "confirmed");
+      .select("event_id, payment_status, status, refund_status")
+      .eq("user_id", currentUser.id);
     myRegistrations = data ?? [];
   }
 
@@ -94,7 +93,11 @@ async function loadEvents() {
     if (payBtn) payBtn.addEventListener("click", () => registerPaid(ev.id));
 
     const cancelBtn = document.getElementById(`cancel-${ev.id}`);
-    if (cancelBtn) cancelBtn.addEventListener("click", () => cancelRegistration(ev.id));
+    if (cancelBtn) {
+      const myReg = myRegistrations.find((r) => r.event_id === ev.id && r.status === "confirmed");
+      const needsRefund = myReg && myReg.payment_status === "paid";
+      cancelBtn.addEventListener("click", () => cancelRegistration(ev.id, needsRefund));
+    }
   });
 }
 
@@ -103,12 +106,18 @@ function renderEventRow(ev, myRegistrations) {
   const dateStr = date.toLocaleDateString("ja-JP", { month: "numeric", day: "numeric", weekday: "short" });
   const timeStr = date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
 
-  const myReg = myRegistrations.find((r) => r.event_id === ev.id);
+  // キャンセル済みで返金申請中のものだけは「有効な登録」として扱う（再登録でぶつからないように）。
+  // それ以外のキャンセル済み（返金不要 or 返金済み）は「未登録」扱いにして再登録できるようにする。
+  const myReg = myRegistrations.find(
+    (r) => r.event_id === ev.id && (r.status === "confirmed" || r.refund_status === "requested")
+  );
   const isFree = ev.price_jpy === 0;
 
   let actionHtml;
   if (!currentUser) {
     actionHtml = `<span class="event-status">ログインして参加</span>`;
+  } else if (myReg && myReg.refund_status === "requested") {
+    actionHtml = `<span class="event-status">返金申請中</span>`;
   } else if (myReg) {
     const paidLabel = isFree ? "参加登録済み" : myReg.payment_status === "paid" ? "支払い済み" : "支払い待ち";
     actionHtml = `
@@ -139,13 +148,22 @@ function renderEventRow(ev, myRegistrations) {
 
 async function registerFree(eventId) {
   if (!currentUser) return;
-  const { error } = await sb.from("registrations").insert({
-    event_id: eventId,
-    user_id: currentUser.id,
-    payment_status: "not_required",
-  });
+  const { error } = await sb.from("registrations").upsert(
+    {
+      event_id: eventId,
+      user_id: currentUser.id,
+      user_email: currentUser.email,
+      status: "confirmed",
+      payment_status: "not_required",
+      cancelled_at: null,
+      refund_status: "none",
+      refund_amount: null,
+      stripe_refund_id: null,
+    },
+    { onConflict: "event_id,user_id" }
+  );
   if (error) {
-    alert("登録に失敗しました。すでに登録済みの可能性があります。");
+    alert("登録に失敗しました。");
     console.error(error);
   }
   loadEvents();
@@ -177,11 +195,27 @@ async function registerPaid(eventId) {
 
 // ---------- キャンセル ----------
 
-async function cancelRegistration(eventId) {
+async function cancelRegistration(eventId, needsRefund) {
   if (!currentUser) return;
+
+  const update = needsRefund
+    ? {
+        status: "cancelled",
+        cancelled_at: new Date().toISOString(),
+        refund_status: "requested",
+      }
+    : { status: "cancelled" };
+
+  if (needsRefund) {
+    const confirmed = confirm(
+      "キャンセルします。お支払い済みの参加費は、運営側の確認後に返金されます（開催日の前日までのキャンセルは全額、当日以降は決済手数料分を差し引いた金額の返金となります）。よろしいですか？"
+    );
+    if (!confirmed) return;
+  }
+
   const { error } = await sb
     .from("registrations")
-    .update({ status: "cancelled" })
+    .update(update)
     .eq("event_id", eventId)
     .eq("user_id", currentUser.id);
   if (error) console.error(error);

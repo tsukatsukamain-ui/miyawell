@@ -35,7 +35,13 @@ export async function onRequestPost(context) {
         {
           event_id: eventId,
           user_id: userId,
+          user_email: userEmail,
+          status: "confirmed",
           payment_status: "pending",
+          cancelled_at: null,
+          refund_status: "none",
+          refund_amount: null,
+          stripe_refund_id: null,
         },
         { onConflict: "event_id,user_id" }
       )

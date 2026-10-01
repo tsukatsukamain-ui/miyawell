@@ -68,6 +68,12 @@ async function renderApp() {
     <p class="sub">ここで追加・編集した内容は、すぐにサイトのイベント一覧に反映されます。</p>
 
     <div class="card">
+      <h2>返金リクエスト</h2>
+      <p class="sub" style="margin-bottom:16px;">参加者がキャンセルした有料イベントの返金待ち一覧です。金額は自動計算されます（前日まで: 全額 / 当日以降: 決済手数料を差し引いた額）。</p>
+      <div id="refund-list"><p class="locked">読み込み中...</p></div>
+    </div>
+
+    <div class="card">
       <h2>新しいイベントを追加</h2>
       <form id="new-event-form">${eventFormFields()}</form>
       <div class="form-actions">
@@ -88,6 +94,82 @@ async function renderApp() {
   });
 
   loadEventList();
+  loadRefundRequests();
+}
+
+// ---------- 返金リクエスト ----------
+
+async function loadRefundRequests() {
+  const listEl = document.getElementById("refund-list");
+  const { data: regs, error } = await sb
+    .from("registrations")
+    .select("id, user_email, cancelled_at, events!inner(title, starts_at)")
+    .eq("refund_status", "requested")
+    .order("cancelled_at", { ascending: true });
+
+  if (error) {
+    listEl.innerHTML = `<p class="msg error">読み込みに失敗しました: ${escapeHtml(error.message)}</p>`;
+    return;
+  }
+  if (!regs || regs.length === 0) {
+    listEl.innerHTML = `<p class="locked">返金待ちのリクエストはありません。</p>`;
+    return;
+  }
+
+  listEl.innerHTML = regs.map((r) => renderRefundItem(r)).join("");
+
+  regs.forEach((r) => {
+    document.getElementById(`refund-btn-${r.id}`).addEventListener("click", () => processRefund(r.id));
+  });
+}
+
+function renderRefundItem(r) {
+  const ev = r.events;
+  const eventDateStr = new Date(ev.starts_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
+  const cancelledStr = r.cancelled_at ? new Date(r.cancelled_at).toLocaleString("ja-JP", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "不明";
+  const jstDate = (d) => new Date(d).toLocaleDateString("en-CA", { timeZone: "Asia/Tokyo" });
+  const fullRefund = r.cancelled_at ? jstDate(r.cancelled_at) < jstDate(ev.starts_at) : false;
+  const policyLabel = fullRefund ? "全額返金の対象（前日までのキャンセル）" : "手数料を差し引いた額を返金（当日以降のキャンセル）";
+  return `
+    <div class="event-item" id="refund-item-${r.id}">
+      <div class="event-item-head">
+        <div>
+          <div class="event-item-title">${escapeHtml(ev.title)}（開催: ${eventDateStr}）</div>
+          <div class="event-item-meta">${escapeHtml(r.user_email ?? "メール不明")} ・ キャンセル日時: ${cancelledStr}<br>${policyLabel}</div>
+        </div>
+        <div class="event-item-actions">
+          <button id="refund-btn-${r.id}" class="btn btn-primary btn-sm">返金する</button>
+        </div>
+      </div>
+      <div id="refund-msg-${r.id}"></div>
+    </div>
+  `;
+}
+
+async function processRefund(registrationId) {
+  if (!confirm("この参加者に返金を実行します。よろしいですか？")) return;
+
+  const msg = document.getElementById(`refund-msg-${registrationId}`);
+  msg.innerHTML = `<p class="msg">処理中...</p>`;
+
+  const { data: { session } } = await sb.auth.getSession();
+  const res = await fetch("/process-refund", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${session?.access_token ?? ""}`,
+    },
+    body: JSON.stringify({ registrationId }),
+  });
+
+  const result = await res.json();
+  if (!res.ok) {
+    msg.innerHTML = `<p class="msg error">失敗しました: ${escapeHtml(result.error ?? "不明なエラー")}</p>`;
+    return;
+  }
+
+  msg.innerHTML = `<p class="msg ok">¥${result.refunded.toLocaleString()} を返金しました。</p>`;
+  setTimeout(loadRefundRequests, 1200);
 }
 
 function eventFormFields(ev = {}) {
